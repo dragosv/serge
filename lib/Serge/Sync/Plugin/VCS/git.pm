@@ -26,9 +26,11 @@ sub init {
     $self->SUPER::init(@_);
 
     $self->merge_schema({
-        clone_params => 'STRING',
-        name => 'STRING',
-        email => 'STRING'
+        clone_params  => 'STRING',
+        name          => 'STRING',
+        email         => 'STRING',
+        commit_params => 'STRING',
+        push_params   => 'STRING'
     });
 }
 
@@ -192,10 +194,14 @@ sub commit {
     # prepare the final message
     $message = $self->_update_message($message);
     # split the multiline message into a series of -m "..." -m "..."
-    my $msg_parameters = join(' ', map { "-m \"$_\"" } split(/\n+/s, $message));
+    my $parameters = join(' ', map { "-m \"$_\"" } split(/\n+/s, $message));
+
+    if (defined $self->{data}->{commit_params}) {
+        $parameters .= ' '.$self->{data}->{commit_params};
+    }
 
     # commit locally
-    $self->run_in($local_path, qq|git commit $msg_parameters|);
+    $self->run_in($local_path, qq|git commit $parameters|);
 
     # fetch changes from remote server
     $self->run_in($local_path, qq|git fetch|);
@@ -213,7 +219,13 @@ sub _push {
 
     ($remote_path, my $branch) = $self->split_remote_path_branch($remote_path);
 
-    $self->run_in($local_path, qq|git push origin $branch|);
+    my $parameters = $branch;
+
+    if (defined $self->{data}->{push_params}) {
+        $parameters .= ' '.$self->{data}->{push_params};
+    }
+
+    $self->run_in($local_path, qq|git push origin $parameters|);
 }
 
 1;
